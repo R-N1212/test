@@ -38,7 +38,7 @@ query = st.text_input("💬 質問を入力してください")
 if st.button("回答を生成") and query:
     query_vec = model.encode(query)
 
-    # ✅ 修正済：柔軟にフィールド選択（body or answer）
+    # ✅ スコア付き検索関数（フィールド柔軟対応 + 類似度返却）
     def search_similar_docs(data, query_vec, top_k=3):
         for field_option in ["body", "answer"]:
             if field_option in data[0]:
@@ -52,11 +52,21 @@ if st.button("回答を生成") and query:
             np.linalg.norm(embeddings, axis=1) * np.linalg.norm(query_vec)
         )
         top_indices = np.argsort(similarities)[-top_k:][::-1]
-        return [data[i] for i in top_indices]
+        top_docs = [data[i] for i in top_indices]
+        top_scores = [similarities[i] for i in top_indices]
+        return top_docs, top_scores
 
-    # === ✅ 類似ドキュメント取得（FAQ + マニュアル） ===
-    top_faq = search_similar_docs(faq_data, query_vec)
-    top_manual = search_similar_docs(manual_data, query_vec)
+    # === ✅ FAQ優先 → スコア低ければマニュアル検索へ切り替え ===
+    top_faq, faq_scores = search_similar_docs(faq_data, query_vec)
+    THRESHOLD = 0.6  # 類似度のしきい値（0〜1）
+
+    if max(faq_scores) >= THRESHOLD:
+        retrieved_label = "FAQ"
+        retrieved_docs = top_faq
+    else:
+        top_manual, _ = search_similar_docs(manual_data, query_vec)
+        retrieved_label = "マニュアル"
+        retrieved_docs = top_manual
 
     # === ✅ プロンプト作成 ===
     def format_docs(label, docs):
@@ -65,7 +75,7 @@ if st.button("回答を生成") and query:
             for doc in docs
         )
 
-    retrieved_text = format_docs("FAQ", top_faq) + "\n\n" + format_docs("マニュアル", top_manual)
+    retrieved_text = format_docs(retrieved_label, retrieved_docs)
 
     prompt = f"""以下の社内資料に基づき、質問に丁寧に答えてください。
 
