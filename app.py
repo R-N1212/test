@@ -1,3 +1,5 @@
+# RAG_vectorファイル二つを対象とする形式（マニュアル、FAQ）
+
 import streamlit as st
 import pickle
 import numpy as np
@@ -5,45 +7,61 @@ import os
 from sentence_transformers import SentenceTransformer
 from openai import OpenAI
 
-# === ✅ セットアップ ===
+# === ✅ ページ設定 ===
 st.set_page_config(page_title="社内RAGチャットボット", layout="wide")
 st.title("📘 社内ルール相談チャットボット")
 
-# === ✅ モデルとデータの読み込み ===
+# === ✅ モデルとデータの読み込み（FAQ + マニュアル） ===
 @st.cache_resource
 def load_model_and_data():
     model = SentenceTransformer("all-MiniLM-L6-v2")
-    with open("vector_store.pkl", "rb") as f:
-        data = pickle.load(f)
-    return model, data
 
-model, manual_data = load_model_and_data()
+    # FAQデータ
+    with open("vector_store_faq.pkl", "rb") as f:
+        faq_data = pickle.load(f)
+
+    # マニュアルデータ
+    with open("vector_store.pkl", "rb") as f:
+        manual_data = pickle.load(f)
+
+    return model, faq_data, manual_data
+
+model, faq_data, manual_data = load_model_and_data()
 
 # === ✅ OpenAIキーの読み込み（secrets.toml 経由） ===
 api_key = st.secrets["OPENAI_API_KEY"]
 client = OpenAI(api_key=api_key)
 
-# === ✅ ユーザー入力 ===
+# === ✅ ユーザー入力欄 ===
 query = st.text_input("💬 質問を入力してください")
 
 if st.button("回答を生成") and query:
-    # === ✅ 類似検索 ===
     query_vec = model.encode(query)
-    docs = manual_data
-    manual_embeddings = [model.encode(d['body']) for d in docs]
-    similarities = np.dot(manual_embeddings, query_vec) / (
-        np.linalg.norm(manual_embeddings, axis=1) * np.linalg.norm(query_vec)
-    )
-    top_k = np.argsort(similarities)[-3:][::-1]
+
+    def search_similar_docs(data, query_vec, top_k=3):
+        embeddings = [model.encode(d['body']) for d in data]
+        similarities = np.dot(embeddings, query_vec) / (
+            np.linalg.norm(embeddings, axis=1) * np.linalg.norm(query_vec)
+        )
+        top_indices = np.argsort(similarities)[-top_k:][::-1]
+        return [data[i] for i in top_indices]
+
+    # === ✅ 類似ドキュメント取得（FAQ + マニュアル） ===
+    top_faq = search_similar_docs(faq_data, query_vec)
+    top_manual = search_similar_docs(manual_data, query_vec)
 
     # === ✅ プロンプト作成 ===
-    retrieved = "\n".join(
-        f"{docs[i]['title']}（{docs[i]['article']}）: {docs[i]['body']}" for i in top_k
-    )
-    prompt = f"""以下のマニュアルに基づき、質問に丁寧に答えてください。
+    def format_docs(label, docs):
+        return f"\n--- {label} ---\n" + "\n".join(
+            f"{doc.get('title', 'Q&A')}（{doc.get('article', '')}）: {doc['body']}"
+            for doc in docs
+        )
 
-マニュアル抜粋:
-{retrieved}
+    retrieved_text = format_docs("FAQ", top_faq) + "\n\n" + format_docs("マニュアル", top_manual)
+
+    prompt = f"""以下の社内資料に基づき、質問に丁寧に答えてください。
+
+{retrieved_text}
 
 質問:
 {query}
@@ -66,5 +84,6 @@ if st.button("回答を生成") and query:
             st.markdown(answer)
         except Exception as e:
             st.error(f"❌ エラーが発生しました: {e}")
+
 elif not query:
     st.info("💬 質問を入力後、[回答を生成]をクリックしてください")
