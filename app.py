@@ -38,8 +38,16 @@ query = st.text_input("💬 質問を入力してください")
 if st.button("回答を生成") and query:
     query_vec = model.encode(query)
 
+    # ✅ 修正済：柔軟にフィールド選択（body or answer）
     def search_similar_docs(data, query_vec, top_k=3):
-        embeddings = [model.encode(d['body']) for d in data]
+        for field_option in ["body", "answer"]:
+            if field_option in data[0]:
+                target_field = field_option
+                break
+        else:
+            raise KeyError("対象データに 'body' または 'answer' フィールドが見つかりません")
+
+        embeddings = [model.encode(d[target_field]) for d in data]
         similarities = np.dot(embeddings, query_vec) / (
             np.linalg.norm(embeddings, axis=1) * np.linalg.norm(query_vec)
         )
@@ -53,7 +61,7 @@ if st.button("回答を生成") and query:
     # === ✅ プロンプト作成 ===
     def format_docs(label, docs):
         return f"\n--- {label} ---\n" + "\n".join(
-            f"{doc.get('title', 'Q&A')}（{doc.get('article', '')}）: {doc['body']}"
+            f"{doc.get('title', 'Q&A')}（{doc.get('article', '')}）: {doc.get('body', doc.get('answer', ''))}"
             for doc in docs
         )
 
