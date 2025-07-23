@@ -27,6 +27,7 @@ if "quiz_order" not in st.session_state:
     st.session_state.answers = []
     st.session_state.correct_count = 0
     st.session_state.finished = False
+    st.session_state.shuffled_choices = {}  # ✅ 選択肢を保持する辞書を追加
 
 # === ✅ クイズを進行 ===
 if not st.session_state.finished:
@@ -35,24 +36,16 @@ if not st.session_state.finished:
 
     st.subheader(f"問題 {q_index + 1} / 5")
     st.write(quiz["question"])
-    shuffled_choices = quiz["choices"].copy()
-    random.shuffle(shuffled_choices)
-    shuffled_choices = quiz["choices"].copy()
-    random.shuffle(shuffled_choices)
-    shuffled_choices = quiz["choices"].copy()
-    random.shuffle(shuffled_choices)
-    shuffled_choices = quiz["choices"].copy()
-    random.shuffle(shuffled_choices)
-    shuffled_choices = quiz["choices"].copy()
-    random.shuffle(shuffled_choices)
-    shuffled_choices = quiz["choices"].copy()
-    random.shuffle(shuffled_choices)
+
+    # ✅ 初回のみシャッフルして保持、それ以降は固定順で表示
+    if q_index not in st.session_state.shuffled_choices:
+        choices = quiz["choices"].copy()
+        random.shuffle(choices)
+        st.session_state.shuffled_choices[q_index] = choices
+
+    shuffled_choices = st.session_state.shuffled_choices[q_index]
+
     user_choice = st.radio("選択肢を選んでください：", shuffled_choices, key=f"q{q_index}")
-
-
-
-
-
 
     if st.button("次へ"):
         is_correct = user_choice == quiz["answer"]
@@ -89,10 +82,11 @@ else:
                 st.markdown("---")
 
     if st.button("🔁 もう一度挑戦"):
-        # セッション初期化
+        # セッション初期化（シャッフル結果もリセット）
         st.session_state.quiz_order = random.sample(quiz_data, k=5)
         st.session_state.current_question = 0
         st.session_state.answers = []
         st.session_state.correct_count = 0
         st.session_state.finished = False
+        st.session_state.shuffled_choices = {}
         st.rerun()
