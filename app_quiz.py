@@ -35,7 +35,9 @@ if not st.session_state.finished:
 
     st.subheader(f"問題 {q_index + 1} / 5")
     st.write(quiz["question"])
-    user_choice = st.radio("選択肢を選んでください：", quiz["choices"], key=f"q{q_index}")
+    shuffled_choices = quiz["choices"].copy()
+    random.shuffle(shuffled_choices)
+    user_choice = st.radio("選択肢を選んでください：", shuffled_choices, key=f"q{q_index}")
 
     if st.button("次へ"):
         is_correct = user_choice == quiz["answer"]
