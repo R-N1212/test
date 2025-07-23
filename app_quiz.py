@@ -1,5 +1,5 @@
 # RAG_QuizBot_prototype1
-# 2025-07-23 19:15
+# 2025-07-23 19:24 修正版（ボタン挙動修正）
 
 import streamlit as st
 import yaml
@@ -27,7 +27,8 @@ if "quiz_order" not in st.session_state:
     st.session_state.answers = []
     st.session_state.correct_count = 0
     st.session_state.finished = False
-    st.session_state.shuffled_choices = {}  # ✅ 選択肢を保持する辞書を追加
+    st.session_state.shuffled_choices = {}
+    st.session_state.answered = False  # ✅ 回答フラグを追加
 
 # === ✅ クイズを進行 ===
 if not st.session_state.finished:
@@ -37,9 +38,10 @@ if not st.session_state.finished:
     st.subheader(f"問題 {q_index + 1} / 5")
     st.write(quiz["question"])
 
-    # ✅ 初回のみシャッフルして保持、それ以降は固定順で表示
+    # ✅ 初回のみシャッフルして保存
     if q_index not in st.session_state.shuffled_choices:
         choices = quiz["choices"].copy()
+        random.seed(q_index)  # シャッフルを固定化
         random.shuffle(choices)
         st.session_state.shuffled_choices[q_index] = choices
 
@@ -47,21 +49,30 @@ if not st.session_state.finished:
 
     user_choice = st.radio("選択肢を選んでください：", shuffled_choices, key=f"q{q_index}")
 
-    if st.button("次へ"):
-        is_correct = user_choice == quiz["answer"]
-        st.session_state.answers.append(
-            (quiz["question"], user_choice, quiz["answer"], is_correct))
-        if is_correct:
-            st.session_state.correct_count += 1
+    if not st.session_state.answered:
+        if st.button("次へ"):
+            is_correct = user_choice == quiz["answer"]
+            st.session_state.answers.append(
+                (quiz["question"], user_choice, quiz["answer"], is_correct)
+            )
+            if is_correct:
+                st.session_state.correct_count += 1
 
+            st.session_state.answered = True  # ✅ 回答フラグを立てて rerun
+            st.rerun()
+
+    else:
+        # ✅ 回答済みなら次の問題へ
         st.session_state.current_question += 1
+        st.session_state.answered = False
 
         if st.session_state.current_question >= 5:
             st.session_state.finished = True
-            st.rerun()
 
+        st.rerun()
+
+# === ✅ 結果表示 ===
 else:
-    # === ✅ 結果表示 ===
     total = len(st.session_state.quiz_order)
     correct = st.session_state.correct_count
     st.subheader("📊 結果発表")
@@ -72,7 +83,7 @@ else:
     else:
         st.warning("🤔 もう一度チャレンジしてみませんか？")
 
-    # 不正解の詳細表示
+    # ❌ 不正解のみ確認
     with st.expander("不正解の内容を確認する"):
         for q_text, user_ans, correct_ans, is_correct in st.session_state.answers:
             if not is_correct:
@@ -82,11 +93,12 @@ else:
                 st.markdown("---")
 
     if st.button("🔁 もう一度挑戦"):
-        # セッション初期化（シャッフル結果もリセット）
+        # ✅ 再スタート時は状態リセット
         st.session_state.quiz_order = random.sample(quiz_data, k=5)
         st.session_state.current_question = 0
         st.session_state.answers = []
         st.session_state.correct_count = 0
         st.session_state.finished = False
         st.session_state.shuffled_choices = {}
+        st.session_state.answered = False
         st.rerun()
