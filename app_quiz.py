@@ -41,7 +41,10 @@ if not st.session_state.finished:
     random.shuffle(shuffled_choices)
     shuffled_choices = quiz["choices"].copy()
     random.shuffle(shuffled_choices)
+    shuffled_choices = quiz["choices"].copy()
+    random.shuffle(shuffled_choices)
     user_choice = st.radio("選択肢を選んでください：", shuffled_choices, key=f"q{q_index}")
+
 
 
 
