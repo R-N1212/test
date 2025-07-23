@@ -1,52 +1,35 @@
-# RAG_QuizBot_txt-yaml
-# 2025-07-23 18:00
-
-import yaml
-
-# 入力・出力ファイルパス（適宜変更可能）
-input_path = r"C:\Users\ryotaro\Desktop\RAG\RAG_コンプラクイズ_用語.txt"
-output_path = "compliance_quiz.yaml"
-
-
-def parse_quiz_txt(txt_path):
-    with open(txt_path, "r", encoding="utf-8") as f:
-        raw = f.read()
-
-    blocks = [block.strip() for block in raw.split("---") if block.strip()]
-    quiz_list = []
-
-    for block in blocks:
-        lines = block.splitlines()
-        question = ""
-        answer = ""
-        choices = []
-
-        for line in lines:
-            if line.startswith("Q:"):
-                question = line[2:].strip()
-            elif line.startswith("A:"):
-                answer = line[2:].strip()
-                choices.append(answer)  # 正解も選択肢に含める
-            elif line.startswith("C:"):
-                choice = line[2:].strip()
-                if choice != answer:  # 重複を避けたければこの条件を外す
-                    choices.append(choice)
-
-        quiz_list.append({
-            "question": question,
-            "answer": answer,
-            "choices": choices
-        })
-
-    return quiz_list
-
-
-def save_as_yaml(data, yaml_path):
-    with open(yaml_path, "w", encoding="utf-8") as f:
-        yaml.dump(data, f, allow_unicode=True)
-
-
-if __name__ == "__main__":
-    quiz_data = parse_quiz_txt(input_path)
-    save_as_yaml(quiz_data, output_path)
-    print(f"✅ YAMLファイルに変換完了: {output_path}")
+- answer: ぎゃくひぶ
+  choices:
+  - ぎゃくひぶ
+  - ぎゃくひぷ
+  - きゃくひぶ
+  - ぎゃくにっぷ
+  question: 逆日歩の読み方として正しいものを選択してください。
+- answer: 信用取引における売り方が負担する、証券金融会社から株式を借りる際に発生するコスト。
+  choices:
+  - 信用取引における売り方が負担する、証券金融会社から株式を借りる際に発生するコスト。
+  - 信用取引における買い方が負担する、証券金融会社から株式を借りる際に発生するコスト。
+  - 信用取引における売り方が負担する、証券融通会社から株式を借りる際に発生するコスト。
+  - 信用取引における買い方が負担する、証券融通会社から株式を借りる際に発生するコスト。
+  question: 逆日歩の説明として正しいものを選択してください。
+- answer: システムトレードで儲ける奥義書-日本上陸! 本格的自動売買マニュアル
+  choices:
+  - システムトレードで儲ける奥義書-日本上陸! 本格的自動売買マニュアル
+  - システムトレード検証と実践
+  - システムトレード基本と原則
+  - システムトレード超入門
+  question: システムトレードの名著を一つ選んでください。
+- answer: T+2
+  choices:
+  - T+2
+  - T+1
+  - T+3
+  - T+4
+  question: 約定日から受渡日までの日数をあらわすものを選択してください。
+- answer: 2-1
+  choices:
+  - 2-1
+  - 5-4
+  - 4-3
+  - 3-2
+  question: 株式の発行会社が定めている権利確定日の●営業日前が｢権利付最終日｣、●営業日前が｢権利落ち日｣となります。●に入る組み合わせの正しいものを選択してください。
